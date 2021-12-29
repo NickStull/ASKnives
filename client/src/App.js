@@ -1,4 +1,3 @@
-import logo from './logo.svg';
 import './App.css';
 import Navbar from './components/Navbar/Navbar';
 import Banner from './components/Banner/Banner';
@@ -11,15 +10,10 @@ function App() {
       <Banner />
       <Row
         title={"NEW RELEASES"}
-        fetchUrl={requests.fetchNetflixOriginals}
+        category={"new_releases"}
+        type={"knives"}
         isLargeRow
       />
-      <Banner />
-      <Banner />
-      <Banner />
-      <Banner />
-      <Banner />
-      <Banner />
     </div>
   );
 }

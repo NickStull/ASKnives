@@ -1,68 +1,152 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
 import "./Row.css";
-import YouTube from "react-youtube";
-import movieTrailer from "movie-trailer";
+import { firestore, storage } from "../../firebase/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { ref, getDownloadURL } from "firebase/storage"
+import { Accordion } from "react-bootstrap/Accordion"
+import { useAccordionButton } from 'react-bootstrap/AccordionButton';
 
-const baseUrl = "https://image.tmdb.org/t/p/original";
+// const Images = ({imageList, isLargeRow}) => {
+//   console.log(imageList)
 
-const Row = ({ title, fetchUrl, isLargeRow }) => {
-  const [movies, setMovies] = useState([]);
-  const [trailerUrl, setTrailerUrl] = useState("");
+//   if(imageList.length > 0){
+//     imageList.map((item) => {
+//       console.log("hit map")
+  
+//       return(
+//         <img
+//           key={item.id}
+//           // onClick={() => handleClick(movie)}
+//           className={`row__poster ${isLargeRow && "row__posterLarge"} `}
+//           src={`gs://asknives-9fb8b.appspot.com/${item.id}/${item.main_img}`}
+//           alt={item.name}
+//         />
+//       )
+//     }
+//     )
+//   } else {
+//     return null
+//   }
+// }
+
+const Row = ({ title, category, type, isLargeRow }) => {
+
+  const [ idList, setIDList ] = useState([]);
+  const [ items, setItems ] = useState([]);
+  const [ showDetails, setShowDetails ] = useState(false);
+  const [ detailsID, setDetailsID ] = useState("");
+  const [ detailsURLS, setDetailsURLS ] = useState([])
+  const [ trailerUrl, setTrailerUrl ] = useState("");
 
   useEffect(() => {
-    async function fetchData() {
-      const request = await axios.get(fetchUrl);
-      setMovies(request.data.results);
-      return request;
-    }
-    fetchData();
-  }, [fetchUrl]);
-  const opts = {
-    height: "390",
-    width: "740",
-    playerVars: {
-      // https://developers.google.com/youtube/player_parameters
-      autoplay: 1,
-    },
-  };
 
-  const handleClick = (movie) => {
-    if (trailerUrl) {
-      setTrailerUrl("");
-    } else {
-      movieTrailer(movie?.name || "")
-        .then((url) => {
-          const urlParams = new URLSearchParams(new URL(url).search);
-          setTrailerUrl(urlParams.get("v"));
-        })
-        .catch((err) => console.log(err));
+    const fetchList = async () => {
+      const categoryRef = doc(firestore, "categories", category)
+
+      const idListSnap = await getDoc(categoryRef);
+
+      if (idListSnap.exists()) {
+
+        let data = idListSnap.data()
+        setIDList(data.list)
+        
+      } else {
+        console.log("No Data")
+      }
+
     }
+    
+    fetchList();
+
+  }, [category]);
+
+
+  useEffect(() => {
+
+    const fetchItems = async () => {
+  
+      idList.forEach(id => {
+        const itemRef = doc(firestore, type, id)
+
+        const itemSnap = getDoc(itemRef).then(res => {
+          
+          if(res.exists()) {
+            let data = res.data()
+            data.id = id
+
+            if(data.main_img){
+              getDownloadURL(ref(storage, `${id}/${data.main_img}`)).then((url) => {
+                data.main_img_url = url
+                setItems(oldItems => [...oldItems, data])
+              })
+            }else{
+              setItems(oldItems => [...oldItems, data])
+            }
+          }
+        })
+
+
+      })
+    }
+
+    if(idList.length > 0){
+      fetchItems()
+    }
+
+  }, [idList])
+
+
+  const handleClick = (item) => {
+      console.log(item.other_imgs)
+      setDetailsURLS([])
+
+      if(showDetails && detailsID === item.id){
+        setShowDetails(false)
+        setDetailsID("")
+        setDetailsURLS([])
+        console.log("close")
+      } else {
+        if (!showDetails){
+          setShowDetails(true)
+        }
+
+        setDetailsID(item.id)
+        console.log("open")
+        setDetailsURLS([item.main_img_url])
+        item.other_imgs.forEach(fileName => {
+          getDownloadURL(ref(storage, `${item.id}/${fileName}`)).then((url) => {
+            setDetailsURLS(oldURLS => [...oldURLS, url])
+          })
+        })
+
+      }
   };
 
   return (
     <div className="row">
       <h2>{title}</h2>
       <div className="row__posters">
-        {movies.map((movie) => (
+        {/* {console.log(list)} */}
+        {items.map((item) => (
           <img
-            key={movie.id}
-            onClick={() => handleClick(movie)}
+            key={item.id}
+            onClick={() => handleClick(item)}
             className={`row__poster ${isLargeRow && "row__posterLarge"} `}
-            src={`${baseUrl}${
-              isLargeRow ? movie.poster_path : movie.backdrop_path
-            }`}
-            alt={movie.name}
+            src={`${item.main_img_url}`}
+            alt={item.name}
           />
         ))}
       </div>
-      {trailerUrl && (
-        <YouTube
-          videoId={trailerUrl}
-          opts={opts}
-          className="youtube" // defaults -> null
-        />
-      )}{" "}
+      {showDetails && (
+        <div>
+          {detailsURLS.map((image) => (
+            <img
+              key={image}
+              src={image}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
