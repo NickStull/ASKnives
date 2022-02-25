@@ -5,6 +5,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { ref, getDownloadURL } from "firebase/storage"
 import { Accordion } from "react-bootstrap/Accordion"
 import { useAccordionButton } from 'react-bootstrap/AccordionButton';
+import Details from "./Details";
 
 // const Images = ({imageList, isLargeRow}) => {
 //   console.log(imageList)
@@ -35,7 +36,7 @@ const Row = ({ title, category, type, isLargeRow }) => {
   const [ items, setItems ] = useState([]);
   const [ showDetails, setShowDetails ] = useState(false);
   const [ detailsID, setDetailsID ] = useState("");
-  const [ detailsURLS, setDetailsURLS ] = useState([])
+  const [ detailsItem, setDetailsItem ] = useState({})
   const [ trailerUrl, setTrailerUrl ] = useState("");
 
   useEffect(() => {
@@ -97,27 +98,23 @@ const Row = ({ title, category, type, isLargeRow }) => {
 
 
   const handleClick = (item) => {
-      console.log(item.other_imgs)
-      setDetailsURLS([])
 
       if(showDetails && detailsID === item.id){
+
         setShowDetails(false)
         setDetailsID("")
-        setDetailsURLS([])
+        setDetailsItem({})
         console.log("close")
+
       } else {
+
         if (!showDetails){
           setShowDetails(true)
         }
 
         setDetailsID(item.id)
+        setDetailsItem(item)
         console.log("open")
-        setDetailsURLS([item.main_img_url])
-        item.other_imgs.forEach(fileName => {
-          getDownloadURL(ref(storage, `${item.id}/${fileName}`)).then((url) => {
-            setDetailsURLS(oldURLS => [...oldURLS, url])
-          })
-        })
 
       }
   };
@@ -137,16 +134,7 @@ const Row = ({ title, category, type, isLargeRow }) => {
           />
         ))}
       </div>
-      {showDetails && (
-        <div>
-          {detailsURLS.map((image) => (
-            <img
-              key={image}
-              src={image}
-            />
-          ))}
-        </div>
-      )}
+      {/* <Details showDetails={showDetails} item={detailsItem} /> */}
     </div>
   );
 };
